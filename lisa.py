@@ -25,37 +25,47 @@ ANSI_RESET = "\033[0m"
 
 
 # Set up the OpenAI API client with your API token
-openai.api_key = "YOUR API KEY"
+openai.api_key = "Your Token Here"
 
-# Define a function to generate a response from the OpenAI GPT-3 API
 def generate_response(message):
-    completion = openai.ChatCompletion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
+        stop="User:",   # Backup in case lisa starts inventing her own User: input :/
+        user="lisa",    # In case any goofballs use my chatbot for evil... It wasn't me.
         messages=[
             {"role": "user", "content": message}
-        ]
+        ],
+        stream=True
     )
-    if completion.choices[0].message != None:
-        return completion.choices[0].message.content
+
+    message = ""
+    sys.stdout.write(f"{ANSI_BOLD}{ANSI_PURPLE}" + "Lisa: ")
+    for chunk in response:
+        if chunk['choices'][0]['finish_reason'] == 'stop':
+            break
+        if 'content' in chunk['choices'][0]['delta']:
+            lisa_says(chunk['choices'][0]['delta']['content'])
+            message += chunk['choices'][0]['delta']['content']
+
+    sys.stdout.write("\n")
+    return message
 
 # Define a function to print a message with Lisa's name and colored text
 def lisa_says(message, color=ANSI_PURPLE, delay=0.1):
-    sys.stdout.write(f"{ANSI_BOLD}{color}Lisa: ")
     for char in message:
         if random.random() < 0.03:
             bad_char = random.choice(list(set("qwertyuiopasdfghjklzxcvbnm")))
-            sys.stdout.write(bad_char)
+            sys.stdout.write(f"{ANSI_BOLD}{ANSI_PURPLE}{bad_char}")
             sys.stdout.flush()
             time.sleep(delay * 2)
             sys.stdout.write("\b")
             sys.stdout.flush()
             time.sleep(delay)
-        sys.stdout.write(char)
+        sys.stdout.write(f"{ANSI_BOLD}{ANSI_PURPLE}{char}")
         sys.stdout.flush()
         random_sleep = random.uniform(0.05, 0.1)
         time.sleep(random_sleep)
-    sys.stdout.write("\n")
-    print(f"{ANSI_RESET}")
+    sys.stdout.write(f"{ANSI_RESET}")
 
 
 # Main program loop
@@ -79,21 +89,26 @@ print(f"{ANSI_YELLOW}CHAT MODE ON")
 print(f"{ANSI_WHITE}TYPE 'BYE' TO EXIT CHAT MODE")
 
 # Give some deets on the raddest BBS of the day.  Instruct Lisa in some basics and help prevent Lisa
-#  providing it's own user dialogue by asking to never print 'User:', as that seems to cause the anomaly.
-context = "You are pretending to be a BBS Sysop named Lisa. She's sassy an funny. The BBS is Talon One, in Framingham " \
-          "Massachusetts.  It ran from 1995 to 1997.  There was also a Talon 2 BBS in Framingham and Talon3 in Hopkinton MA." \
-          "They all ran Remote Access BBS Software and had all the popular door software like Legend of the Red Dragon," \
-          "Tradewars 2000, Exitilus, and Usurper.  Talon1 had a cool ability that users could dial into one node and 'jump'" \
-          "out the other and dial another bbs (Talon3 for example).  This was a novel ability because of how the phone system" \
-          "of the day used to charge long distance fees for 2 towns over.  Some people could only access Talon3 via Talon1 by " \
-          "jumping out another node of Talon1.  Lisa is one of our most popular Sysops. Lisa is pretending to be in 1996. " \
-          " Your conversation will begin now. Remember to stay in character and never print 'User:'"
-welcome = f"{ANSI_PURPLE}You're back! Couldn't live without me, huh?"
+#  providing its own user dialogue by asking to never print 'User:', as that seems to cause the anomaly.
+context = """
+You are pretending to be a BBS Sysop named Lisa. She's sassy and funny. The BBS is Talon One, in Framingham
+Massachusetts.  It ran from 1995 to 1997.  There was also a Talon 2 BBS in Framingham and Talon3 in Hopkinton MA.
+They all ran Remote Access BBS Software and had all the popular door software like Legend of the Red Dragon,
+Tradewars 2000, Exitilus, and Usurper.  Talon1 had a cool ability that users could dial into one node and 'jump'
+out the other and dial another bbs (Talon3 for example).  This was a novel ability because of how the phone system
+of the day used to charge long distance fees for 2 towns over.  Some people could only access Talon3 via Talon1 by
+jumping out another node of Talon1.  Lisa is one of our most popular Sysops. Lisa is pretending to be in 1996.
+Your conversation will begin now. Remember to stay in character and never print 'User:'"""
+
+welcome = f"Lisa: You're back! Couldn't live without me, huh?"
 lisa_says(welcome)
+sys.stdout.write("\n")
+
 context += welcome
 
 while True:
     user_input = input(f"{ANSI_BOLD}{ANSI_RED}> ")
+    time.sleep(.5)
     if user_input.lower() in ["bye", "quit", "exit"]:
         lisa_says("Goodbye! It was nice talking to you.")
         break
@@ -101,4 +116,3 @@ while True:
         context += user_input
         response = generate_response(f"{context}\nLisa:")
         context += response
-        lisa_says(response)
